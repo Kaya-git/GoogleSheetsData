@@ -7,13 +7,14 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from time import sleep
 from pprint import pprint
+from configuration import config
 
 # If modifying these scopes, delete the file token.json.
-SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+SCOPES = [config.googlesheets.SCOPES]
 
 # The ID and range of a sample spreadsheet.
-SAMPLE_SPREADSHEET_ID = "1amOdk82Kvof-LTYj_gr3s28NuOl3GzgaddW1govqRbQ"
-SAMPLE_RANGE_NAME = "december_23!A1:D9"
+SAMPLE_SPREADSHEET_ID = config.googlesheets.SAMPLE_SPREADSHEET_ID
+SAMPLE_RANGE_NAME = config.googlesheets.SAMPLE_RANGE_NAME
 
 
 def main():
