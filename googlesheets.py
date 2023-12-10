@@ -69,7 +69,7 @@ def pull_new_cells():
 
             if len(latest_values) < len(current_values):
                 pprint("Удалили запись")
-            if latest_values != current_values and len(latest_values[-1]) == 4:
+            if latest_values != current_values and len(latest_values[-1]) == 8:
                 pprint("Добавлена запись")
                 try:
                     pprint(f"Латест вальюз:{latest_values[-1]}")
