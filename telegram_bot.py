@@ -3,6 +3,7 @@ import asyncio
 from configuration import config
 import logging
 from googlesheets import pull_new_cells
+from order_queue import order_queue
 
 
 bot = Bot(token=config.telegram_bot.BOT_API)
@@ -18,7 +19,7 @@ async def send_message(chat_id: int = CHAT_ID):
 
     while True:
 
-        new_cell = pull_new_cells()
+        new_cell = order_queue.dequeue()
         try:
             current_operator
             if new_cell[5] != current_operator:
