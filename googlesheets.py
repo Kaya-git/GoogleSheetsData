@@ -17,6 +17,14 @@ SAMPLE_SPREADSHEET_ID = config.googlesheets.SAMPLE_SPREADSHEET_ID
 SAMPLE_RANGE_NAME = config.googlesheets.SAMPLE_RANGE_NAME
 
 
+def find_true_values(list_of_lists: list | None) -> list:
+    true_list = []
+    for value_list in list_of_lists:
+        if value_list[-2] != "Х":
+            true_list.append(value_list)
+    return true_list
+
+
 def pull_new_cells():
     """Shows basic usage of the Sheets API.
     Prints values from a sample spreadsheet.
@@ -34,7 +42,7 @@ def pull_new_cells():
             creds.refresh(Request())
         else:
             flow = InstalledAppFlow.from_client_secrets_file(
-                "credentials.json", SCOPES
+                "google_sheets/credentials.json", SCOPES
             )
             creds = flow.run_local_server(port=0)
         # Save the credentials for the next run
@@ -52,7 +60,7 @@ def pull_new_cells():
             .execute()
         )
         current_values = result.get("values", [])
-
+        current_true_values = find_true_values(current_values)
         while True:
             result = (
               sheet.values()
@@ -63,18 +71,19 @@ def pull_new_cells():
               .execute()
             )
             latest_values = result.get("values", [])
-            pprint("сплю 5 сек")
-            sleep(5)
-            pprint(latest_values)
+            latest_true_values = find_true_values(latest_values)
+            pprint(latest_true_values)
+            pprint("сплю 2 сек")
+            sleep(2)
 
-            if len(latest_values) < len(current_values):
+            if len(latest_true_values) < len(current_true_values):
                 pprint("Удалили запись")
-            if latest_values != current_values and len(latest_values[-1]) == 8:
+            if latest_true_values != current_true_values and len(latest_true_values[-1]) == 7:
                 pprint("Добавлена запись")
                 try:
-                    pprint(f"Латест вальюз:{latest_values[-1]}")
-                    return latest_values[-1]
+                    pprint(f"Латест вальюз:{latest_true_values[-1]}")
+                    return latest_true_values[-1]
                 finally:
-                    current_values = latest_values
+                    current_true_values = latest_true_values
     except HttpError as err:
         print(err)

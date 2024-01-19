@@ -7,7 +7,7 @@ load_dotenv()
 
 @dataclass
 class AiogramBot:
-    BOT_API = os.environ.get("BOT_API")
+    BOT_API = os.environ.get("BOT_TOKEN")
     CHAT_ID = os.environ.get("CHAT_ID")
 
 

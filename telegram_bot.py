@@ -10,18 +10,26 @@ dp = Dispatcher()
 
 CHAT_ID = config.telegram_bot.CHAT_ID
 
+async def filter_int(payload):
+   return "".join(filter(str.isdecimal, payload))
+
+
 
 async def send_message(chat_id: int = CHAT_ID):
-
-    print("start")
-    print(chat_id)
 
     while True:
 
         new_cell = pull_new_cells()
+        operator = new_cell[0]
+        operation = new_cell[1]
+        currency = new_cell[2]
+        table_sum = new_cell[3]
+        rub_table_sum = await filter_int(new_cell[4])
+        rate = await filter_int(new_cell[5])
+        profit = await filter_int(new_cell[6])
         try:
             current_operator
-            if new_cell[5] != current_operator:
+            if operator != current_operator:
                 del message_sell
                 del message_edit_sell
                 del message_buy
@@ -32,14 +40,13 @@ async def send_message(chat_id: int = CHAT_ID):
                 del message_edit_diff
                 count_sell = 0
         except NameError:
-            current_operator = new_cell[5]
+            current_operator = operator
             count_sell = 0
 
-        print(f"Оператор: {current_operator}")
-        # Sell
-        if new_cell[0] == "SELL":
+        if operation == "SELL":
             count_sell += 1
-            message_sell_text = f"""{count_sell}. {new_cell[1]} ({new_cell[2]}) {new_cell[3]}"""
+
+            message_sell_text = f"""{count_sell}. {currency} {rub_table_sum} ({profit}) {table_sum}"""
 
             try:
                 message_sell
@@ -71,10 +78,10 @@ async def send_message(chat_id: int = CHAT_ID):
                 )
 
         # Buy
-        if new_cell[0] == "BUY":
+        if operation == "BUY":
             print("Покупка")
 
-            message_buy_text = f"-{new_cell[6]}\n+{new_cell[1]} {new_cell[3]}\nКурс {new_cell[4]}"
+            message_buy_text = f"-{rub_table_sum}\n+{table_sum} {currency}\nКурс {rate}"
 
             try:
                 message_buy
@@ -102,10 +109,10 @@ async def send_message(chat_id: int = CHAT_ID):
                 )
 
         # Расход
-        if new_cell[0] == "РАСХОД":
+        if operation == "РАСХОД":
             print("расход")
 
-            message_diff_text = f"-{new_cell[6]} {new_cell[7]}"
+            message_diff_text = f"-{rub_table_sum} {new_cell[7]}"
 
             try:
                 message_diff
@@ -133,10 +140,10 @@ async def send_message(chat_id: int = CHAT_ID):
                 )
 
         # Закуп
-        if new_cell[0] == "ЗАКУП":
+        if operation == "ЗАКУП":
             print("Закуп")
 
-            message_rebuy_text = f"-{new_cell[6]}\n+{new_cell[1]} {new_cell[3]}\nКурс {new_cell[4]}"
+            message_rebuy_text = f"-{rub_table_sum}\n+{table_sum} {currency}\nКурс {rate}"
 
             try:
                 message_rebuy
