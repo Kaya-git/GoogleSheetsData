@@ -9,7 +9,6 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from time import sleep
 from pprint import pprint
 
 import functools
@@ -24,182 +23,243 @@ SAMPLE_RANGE_NAME = config.googlesheets.SAMPLE_RANGE_NAME
 COUNTER = 0
 CHAT_ID = config.telegram_bot.CHAT_ID
 
+current_values = []
+latest_values = []
 bot = Bot(token=config.telegram_bot.BOT_API)
 dp = Dispatcher()
+
+
+async def delete_meassages(
+            message_sell_id,
+            message_buy_id,
+            message_rebuy_id,
+            message_diff_id,
+            chat_id
+):
+    await bot.delete_message(
+        chat_id=chat_id,
+        message_id=message_sell.message_id
+    )
+    await bot.delete_message(
+        chat_id=chat_id,
+        message_id=message_buy.message_id
+    )
+    await bot.delete_message(
+        chat_id=chat_id,
+        message_id=message_rebuy.message_id
+    )
+    await bot.delete_message(
+        chat_id=chat_id,
+        message_id=message_diff.message_id
+    )
 
 
 async def filter_int(payload):
     return "".join(filter(str.isdecimal, payload))
 
 
-async def send_message(chat_id: int = CHAT_ID):
+async def parse_cell(new_cell):
+    operator = new_cell[0]
+    operation = new_cell[1]
+    currency = new_cell[2]
+    table_sum = new_cell[3]
+    rub_table_sum = await filter_int(new_cell[4])
+    rate = await filter_int(new_cell[5])
+    profit = await filter_int(new_cell[6])
 
+    return {
+        "operator": operator,
+        "operation": operation,
+        "currency": currency,
+        "table_sum": table_sum,
+        "rub_table_sum": rub_table_sum,
+        "rate": rate,
+        "profit": profit
+    }
+
+
+async def send_message(chat_id: int = CHAT_ID):
     print("start")
     print(chat_id)
+    while True:
+        print(f"кол-во в очереди {await order_queue.size()}")
+        if await order_queue.size() == 0:
+            aoutcome = await pull_new_cells()
+        if aoutcome == "New orders":
+            print(f"кол-во в очереди {await order_queue.size()}")
+            new_cell = await order_queue.dequeue()
 
-    while order_queue.size() != 0:
-        print(order_queue.size())
-        new_cell = await order_queue.dequeue()
-        pprint(new_cell)
-        operator = new_cell[0]
-        operation = new_cell[1]
-        currency = new_cell[2]
-        table_sum = new_cell[3]
-        rub_table_sum = await filter_int(new_cell[4])
-        rate = await filter_int(new_cell[5])
-        profit = await filter_int(new_cell[6])
-        try:
-            current_operator
-            if operator != current_operator:
-                del message_sell
-                del message_edit_sell
-                del message_buy
-                del message_edit_buy
-                del message_rebuy
-                del message_edit_rebuy
-                del message_diff
-                del message_edit_diff
+            pprint(new_cell)
+
+            cell = await parse_cell(
+                new_cell=new_cell
+            )
+            try:
+                current_operator
+                if cell["operator"] != current_operator:
+                    del message_sell
+                    del message_edit_sell
+                    del message_buy
+                    del message_edit_buy
+                    del message_rebuy
+                    del message_edit_rebuy
+                    del message_diff
+                    del message_edit_diff
+                    count_sell = 0
+            except NameError:
+                current_operator = cell["operator"]
                 count_sell = 0
-        except NameError:
-            current_operator = operator
-            count_sell = 0
 
-        if operation == "SELL":
-            count_sell += 1
+            if cell["operation"] == "SELL":
+                count_sell += 1
 
-            message_sell_text = f"""{count_sell}. {currency} {rub_table_sum} ({profit}) {table_sum}"""
+                message_sell_text = f"""{count_sell}. {cell['currency']} {cell['rub_table_sum']} ({cell['profit']}) {cell['table_sum']}"""
 
-            try:
-                message_sell
                 try:
-                    message_edit_sell
-                    message_new = (
-                        f"{message_edit_sell.text},\n{message_sell_text}"
-                    )
+                    message_sell
+                    try:
+                        message_edit_sell
+                        message_new = (
+                            f"{message_edit_sell.text},\n{message_sell_text}"
+                        )
 
-                    message_edit_sell = await bot.edit_message_text(
-                        chat_id=chat_id,
-                        message_id=message_sell.message_id,
-                        text=message_new
-                    )
+                        message_edit_sell = await bot.edit_message_text(
+                            chat_id=chat_id,
+                            message_id=message_sell.message_id,
+                            text=message_new
+                        )
+                    except NameError:
+                        message_new = (
+                            f"{message_sell.text},\n{message_sell_text}"
+                        )
+
+                        message_edit_sell = await bot.edit_message_text(
+                            chat_id=chat_id,
+                            message_id=message_sell.message_id,
+                            text=message_new
+                        )
                 except NameError:
-                    message_new = (
-                        f"{message_sell.text},\n{message_sell_text}"
+                    message_sell = await bot.send_message(
+                        chat_id,
+                        text=message_sell_text
                     )
 
-                    message_edit_sell = await bot.edit_message_text(
-                        chat_id=chat_id,
-                        message_id=message_sell.message_id,
-                        text=message_new
-                    )
-            except NameError:
-                message_sell = await bot.send_message(
-                    chat_id,
-                    text=message_sell_text
-                )
+            # Buy
+            if cell["operation"] == "BUY":
+                print("Покупка")
 
-        # Buy
-        if operation == "BUY":
-            print("Покупка")
+                message_buy_text = f"-{cell['rub_table_sum']}\n+{cell['table_sum']} {cell['currency']}\nКурс {cell['rate']}"
 
-            message_buy_text = f"-{rub_table_sum}\n+{table_sum} {currency}\nКурс {rate}"
-
-            try:
-                message_buy
                 try:
-                    message_edit_buy
-                    message_new = f"{message_edit_buy.text},\n\n{message_buy_text}"
+                    message_buy
+                    try:
+                        message_edit_buy
+                        message_new = f"{message_edit_buy.text},\n\n{message_buy_text}"
 
-                    message_edit_buy = await bot.edit_message_text(
-                        chat_id=chat_id,
-                        message_id=message_buy.message_id,
-                        text=message_new
-                    )
+                        message_edit_buy = await bot.edit_message_text(
+                            chat_id=chat_id,
+                            message_id=message_buy.message_id,
+                            text=message_new
+                        )
+                    except NameError:
+                        message_new = f"{message_buy.text},\n\n{message_buy_text}"
+
+                        message_edit_buy = await bot.edit_message_text(
+                            chat_id=chat_id,
+                            message_id=message_buy.message_id,
+                            text=message_new
+                        )
                 except NameError:
-                    message_new = f"{message_buy.text},\n\n{message_buy_text}"
-
-                    message_edit_buy = await bot.edit_message_text(
-                        chat_id=chat_id,
-                        message_id=message_buy.message_id,
-                        text=message_new
+                    message_buy = await bot.send_message(
+                        chat_id,
+                        text=f"#ОТКУП\n{message_buy_text}"
                     )
-            except NameError:
-                message_buy = await bot.send_message(
-                    chat_id,
-                    text=f"#ОТКУП\n{message_buy_text}"
-                )
 
-        # Расход
-        if operation == "РАСХОД":
-            print("расход")
+            # Расход
+            if cell["operation"] == "РАСХОД":
+                print("расход")
 
-            message_diff_text = f"-{rub_table_sum} {new_cell[7]}"
+                message_diff_text = f"-{cell['rub_table_sum']} {new_cell[7]}"
 
-            try:
-                message_diff
                 try:
-                    message_edit_diff
-                    message_new = f"{message_edit_diff.text}\n{message_diff_text}"
+                    message_diff
+                    try:
+                        message_edit_diff
+                        message_new = f"{message_edit_diff.text}\n{message_diff_text}"
 
-                    message_edit_diff = await bot.edit_message_text(
-                        chat_id=chat_id,
-                        message_id=message_diff.message_id,
-                        text=message_new
-                    )
+                        message_edit_diff = await bot.edit_message_text(
+                            chat_id=chat_id,
+                            message_id=message_diff.message_id,
+                            text=message_new
+                        )
+                    except NameError:
+                        message_new = f"{message_diff.text}\n{message_diff_text}"
+
+                        message_edit_diff = await bot.edit_message_text(
+                            chat_id=chat_id,
+                            message_id=message_diff.message_id,
+                            text=message_new
+                        )
                 except NameError:
-                    message_new = f"{message_diff.text}\n{message_diff_text}"
-
-                    message_edit_diff = await bot.edit_message_text(
-                        chat_id=chat_id,
-                        message_id=message_diff.message_id,
-                        text=message_new
+                    message_diff = await bot.send_message(
+                        chat_id,
+                        text=f"#РАСХОД\n{message_diff_text}"
                     )
-            except NameError:
-                message_diff = await bot.send_message(
-                    chat_id,
-                    text=f"#РАСХОД\n{message_diff_text}"
-                )
 
-        # Закуп
-        if operation == "ЗАКУП":
-            print("Закуп")
+            # Закуп
+            if cell["operation"] == "ЗАКУП":
+                print("Закуп")
 
-            message_rebuy_text = f"-{rub_table_sum}\n+{table_sum} {currency}\nКурс {rate}"
+                message_rebuy_text = f"-{cell['rub_table_sum']}\n+{cell['table_sum']} {cell['currency']}\nКурс {cell['rate']}"
 
-            try:
-                message_rebuy
                 try:
-                    message_edit_rebuy
-                    message_new = f"{message_edit_rebuy.text},\n\n{message_rebuy_text}"
+                    message_rebuy
+                    try:
+                        message_edit_rebuy
+                        message_new = f"{message_edit_rebuy.text},\n\n{message_rebuy_text}"
 
-                    message_edit_rebuy = await bot.edit_message_text(
-                        chat_id=chat_id,
-                        message_id=message_rebuy.message_id,
-                        text=message_new
-                    )
+                        message_edit_rebuy = await bot.edit_message_text(
+                            chat_id=chat_id,
+                            message_id=message_rebuy.message_id,
+                            text=message_new
+                        )
+                    except NameError:
+                        message_new = f"{message_rebuy.text},\n\n{message_rebuy_text}"
+
+                        message_edit_rebuy = await bot.edit_message_text(
+                            chat_id=chat_id,
+                            message_id=message_rebuy.message_id,
+                            text=message_new
+                        )
                 except NameError:
-                    message_new = f"{message_rebuy.text},\n\n{message_rebuy_text}"
-
-                    message_edit_rebuy = await bot.edit_message_text(
-                        chat_id=chat_id,
-                        message_id=message_rebuy.message_id,
-                        text=message_new
+                    message_rebuy = await bot.send_message(
+                        chat_id,
+                        text=f"#ЗАКУП\n{message_rebuy_text}"
                     )
-            except NameError:
-                message_rebuy = await bot.send_message(
-                    chat_id,
-                    text=f"#ЗАКУП\n{message_rebuy_text}"
-                )
 
+        if aoutcome == "Empty table":
+            await asyncio.sleep(10)
 
-async def autcome_actions(status: str) -> None:
-    if status == "New orders":
-        print(status)
-        await send_message()
-        return None
-    if status == "Empty table":
-        print(status)
-        return None
+        if aoutcome == "Del messages. Table is clear":
+            await delete_meassages(
+                message_buy_id=message_buy.message_id,
+                message_diff_id=message_diff.message_id,
+                message_rebuy_id=message_rebuy.message_id,
+                message_sell_id=message_sell.message_id,
+                chat_id=chat_id
+            )
+        if aoutcome == "Empty table":
+            pass
+
+        if aoutcome == "Del meesages. Rewrite orders":
+            await delete_meassages(
+                message_buy_id=message_buy.message_id,
+                message_diff_id=message_diff.message_id,
+                message_rebuy_id=message_rebuy.message_id,
+                message_sell_id=message_sell.message_id,
+                chat_id=chat_id
+            )
+            print("ПЕРЕПИСАТЬ")
 
 
 async def sort_by_x(value_list: list | None) -> list:
@@ -260,26 +320,36 @@ async def compare_lists(latest_list: list, current_list: list):
         current_list=current_list
     )
 
-    if list_is_empty(current_list) is True:
+    if await list_is_empty(current_list) is True:
         if length_status["status"] == "equal":
             return {
                 "status": "Empty table"
             }
 
-        for index in range(len(latest_list)-1):
+        if len(latest_list) != 1:
+            length = len(latest_list)
+            range_l = range(length-1)
+            for index in range(len(latest_list)):
+                print(latest_list[index])
+                await order_queue.enqueue(latest_list[index])
+
+            return {
+                "status": "New orders"
+            }
+        for index in range(len(latest_list)):
             await order_queue.enqueue(latest_list[index])
         return {
             "status": "New orders"
         }
 
-    if list_is_empty(latest_list) is True:
+    if await list_is_empty(latest_list) is True:
         if length_status["status"] == "equal":
             return {
                 "status": "Empty table"
             }
 
         return {
-            "status": "Почистить тг. В таблице удалены все значения"
+            "status": "Del messages. Table is clear"
         }
 
     if length_status["status"] == "latest_is_bigger":
@@ -290,18 +360,28 @@ async def compare_lists(latest_list: list, current_list: list):
         )
 
         if identity["status"] is True:
-            for index in range(len(latest_list)-1):
+            if len(latest_list) != 1:
+                for index in range(len(current_list), len(latest_list)):
+                    await order_queue.enqueue(latest_list[index])
+                return {
+                    "status": "New orders"
+                }
+            for index in range(len(latest_list)):
                 await order_queue.enqueue(latest_list[index])
             return {
                 "status": "New orders"
             }
 
-        mismatch_index = identity["mismatch_index"]
-        for index in range(mismatch_index, len(latest_list)-1):
+        if len(latest_list) != 1:
+            for index in range(len(latest_list)-1):
+                await order_queue.enqueue(latest_list[index])
+                return {
+                    "status": "New orders"
+                }
+        for index in range(len(latest_list)):
             await order_queue.enqueue(latest_list[index])
         return {
-            "status": f"Неоходимо удалить сообщения с индекса {mismatch_index} включительно. Добавлены правленные заявки",
-            "mismatch_index": mismatch_index
+            "status": "Del meesages. Rewrite orders"
         }
 
     if length_status["status"] == "current_is_bigger":
@@ -314,7 +394,6 @@ async def compare_lists(latest_list: list, current_list: list):
             mismatch_index = identity["mismatch_index"]
             return {
                 "status": f"Неоходимо удалить сообщения с индекса {mismatch_index} включительно",
-                "mismatch_index": mismatch_index
             }
 
         index_delete = await len(latest_list)-1
@@ -325,7 +404,13 @@ async def compare_lists(latest_list: list, current_list: list):
 
     if length_status["status"] == "equal":
         if COUNTER == 1:
-            for index in range(len(latest_list)-1):
+            if len(latest_list) != 1:
+                for index in range(len(latest_list)-1):
+                    await order_queue.enqueue(latest_list[index])
+                    return {
+                        "status": "New orders"
+                    }
+            for index in range(len(latest_list)):
                 await order_queue.enqueue(latest_list[index])
             return {
                 "status": "New orders"
@@ -333,6 +418,41 @@ async def compare_lists(latest_list: list, current_list: list):
         return {
             "status": "Списки равны. Изменений не было"
         }
+
+
+async def get_sheets_status(
+    sheet
+):
+    global COUNTER
+    if COUNTER == 1:
+        COUNTER += 1
+
+    if COUNTER == 0:
+        COUNTER += 1
+
+    print(await order_queue.size())
+    if await order_queue.size() == 0:
+        result = (
+            sheet.values().get(
+                spreadsheetId=SAMPLE_SPREADSHEET_ID,
+                range=SAMPLE_RANGE_NAME
+            ).execute()
+        )
+        global current_values
+        global latest_values
+        latest_values = await sort_by_x(result.get("values", []))
+
+        pprint(latest_values)
+
+        outcome = await compare_lists(
+            latest_list=latest_values,
+            current_list=current_values
+        )
+        print(outcome)
+
+        current_values = latest_values
+
+        return outcome["status"]
 
 
 async def pull_new_cells():
@@ -364,48 +484,17 @@ async def pull_new_cells():
 
         # Call the Sheets API
         sheet = service.spreadsheets()
-        result = (
-            sheet.values()
-            .get(spreadsheetId=SAMPLE_SPREADSHEET_ID, range=SAMPLE_RANGE_NAME)
-            .execute()
+        return await get_sheets_status(
+            sheet=sheet
         )
-        current_values = await sort_by_x(result.get("values", []))
-        while True:
-            global COUNTER
-            if COUNTER == 0:
-                COUNTER += 1
 
-            print(order_queue.size())
-            if await order_queue.size() == 0:
-                result = (
-                    sheet.values().get(
-                        spreadsheetId=SAMPLE_SPREADSHEET_ID,
-                        range=SAMPLE_RANGE_NAME
-                    ).execute()
-                )
-                latest_values = await sort_by_x(result.get("values", []))
-
-                pprint(latest_values)
-
-                outcome = await compare_lists(
-                    latest_list=latest_values,
-                    current_list=current_values
-                )
-                print(outcome)
-                await autcome_actions(outcome["status"])
-                current_values = latest_values
-                if COUNTER == 1:
-                    COUNTER += 1
-                sleep(60)
-            print("Сплю 60 сек")
-            sleep(60)
     except HttpError as err:
         print(err)
 
 
 async def main():
     logging.basicConfig(level=logging.DEBUG)
-    await pull_new_cells()
+    await send_message()
 
 
 if __name__ == "__main__":
