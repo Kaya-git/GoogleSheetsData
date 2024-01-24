@@ -10,7 +10,7 @@ from configuration import config
 
 
 COUNTER = 0
-
+current_values = []
 # If modifying these scopes, delete the file token.json.
 SCOPES = [config.googlesheets.SCOPES]
 

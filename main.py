@@ -26,28 +26,37 @@ MESSAGE_REBUY = None
 MESSAGE_EDIT_REBUY = None
 
 
-async def delete_meassages(
-            message_sell,
-            message_buy,
-            message_rebuy,
-            message_diff,
-            chat_id
+async def set_messages_to_none():
+    global CURRENT_OPERATOR
+    global COUNT_SELL
+    global MESSAGE_SELL
+    global MESSAGE_EDIT_SELL
+    global MESSAGE_BUY
+    global MESSAGE_EDIT_BUY
+    global MESSAGE_REBUY
+    global MESSAGE_DIFF
+    global MESSAGE_EDIT_DIFF
+    global MESSAGE_REBUY
+    global MESSAGE_EDIT_REBUY
+
+    MESSAGE_SELL = None
+    MESSAGE_EDIT_SELL = None
+    MESSAGE_BUY = None
+    MESSAGE_EDIT_BUY = None
+    MESSAGE_DIFF = None
+    MESSAGE_EDIT_DIFF = None
+    MESSAGE_REBUY = None
+    MESSAGE_EDIT_REBUY = None
+    COUNT_SELL = 0
+
+
+async def delete_meassage(
+    message_id,
+    chat_id
 ):
     await bot.delete_message(
         chat_id=chat_id,
-        message_id=message_sell.message_id
-    )
-    await bot.delete_message(
-        chat_id=chat_id,
-        message_id=message_buy.message_id
-    )
-    await bot.delete_message(
-        chat_id=chat_id,
-        message_id=message_rebuy.message_id
-    )
-    await bot.delete_message(
-        chat_id=chat_id,
-        message_id=message_diff.message_id
+        message_id=message_id
     )
 
 
@@ -63,10 +72,6 @@ async def parse_cell(new_cell):
     rub_table_sum = await filter_int(new_cell[4])
     rate = await filter_int(new_cell[5])
     profit = await filter_int(new_cell[6])
-    if new_cell[7]:
-        comment = new_cell[7]
-    else:
-        comment = None
     return {
         "operator": operator,
         "operation": operation,
@@ -74,12 +79,11 @@ async def parse_cell(new_cell):
         "table_sum": table_sum,
         "rub_table_sum": rub_table_sum,
         "rate": rate,
-        "profit": profit,
-        "comment": comment
+        "profit": profit
     }
 
 
-async def write_message(cell: dict):
+async def write_message(cell: dict, new_cell):
 
     global CURRENT_OPERATOR
     global COUNT_SELL
@@ -101,16 +105,7 @@ async def write_message(cell: dict):
         COUNT_SELL = 0
 
     if CURRENT_OPERATOR != cell["operator"]:
-
-        MESSAGE_SELL = None
-        MESSAGE_EDIT_SELL = None
-        MESSAGE_BUY = None
-        MESSAGE_EDIT_BUY = None
-        MESSAGE_DIFF = None
-        MESSAGE_EDIT_DIFF = None
-        del message_rebuy
-        del message_edit_rebuy
-        COUNT_SELL = 0
+        await set_messages_to_none()
 
     if cell["operation"] == "SELL":
         COUNT_SELL += 1
@@ -182,7 +177,7 @@ async def write_message(cell: dict):
     if cell["operation"] == "РАСХОД":
         print("расход")
 
-        message_diff_text = f"-{cell['rub_table_sum']} {cell['comment']}"
+        message_diff_text = f"-{cell['rub_table_sum']} {0}"
 
         if MESSAGE_EDIT_DIFF is not None:
             message_new = (
@@ -247,129 +242,6 @@ async def write_message(cell: dict):
         return None
 
 
-        # try:
-        #     message_sell
-            # try:
-                # message_edit_sell
-                # message_new = (
-                #     f"{message_edit_sell.text},\n{message_sell_text}"
-                # )
-
-                # message_edit_sell = await bot.edit_message_text(
-                #     chat_id=chat_id,
-                #     message_id=message_sell.message_id,
-                #     text=message_new
-                # )
-            # except NameError:
-            #     message_new = (
-            #         f"{message_sell.text},\n{message_sell_text}"
-            #     )
-
-            #     message_edit_sell = await bot.edit_message_text(
-            #         chat_id=chat_id,
-            #         message_id=message_sell.message_id,
-            #         text=message_new
-            #     )
-        # except NameError:
-        #     message_sell = await bot.send_message(
-        #         chat_id,
-        #         text=message_sell_text
-        #     )
-
-    # # Buy
-    # if cell["operation"] == "BUY":
-    #     print("Покупка")
-
-    #     message_buy_text = f"-{cell['rub_table_sum']}\n+{cell['table_sum']} {cell['currency']}\nКурс {cell['rate']}"
-
-    #     try:
-    #         message_buy
-    #         try:
-    #             message_edit_buy
-    #             message_new = f"{message_edit_buy.text},\n\n{message_buy_text}"
-
-    #             message_edit_buy = await bot.edit_message_text(
-    #                 chat_id=chat_id,
-    #                 message_id=message_buy.message_id,
-    #                 text=message_new
-    #             )
-    #         except NameError:
-    #             message_new = f"{message_buy.text},\n\n{message_buy_text}"
-
-    #             message_edit_buy = await bot.edit_message_text(
-    #                 chat_id=chat_id,
-    #                 message_id=message_buy.message_id,
-    #                 text=message_new
-    #             )
-    #     except NameError:
-    #         message_buy = await bot.send_message(
-    #             chat_id,
-    #             text=f"#ОТКУП\n{message_buy_text}"
-    #         )
-
-    # # Расход
-    # if cell["operation"] == "РАСХОД":
-    #     print("расход")
-
-    #     message_diff_text = f"-{cell['rub_table_sum']} {new_cell[7]}"
-
-    #     try:
-    #         message_diff
-    #         try:
-    #             message_edit_diff
-    #             message_new = f"{message_edit_diff.text}\n{message_diff_text}"
-
-    #             message_edit_diff = await bot.edit_message_text(
-    #                 chat_id=chat_id,
-    #                 message_id=message_diff.message_id,
-    #                 text=message_new
-    #             )
-    #         except NameError:
-    #             message_new = f"{message_diff.text}\n{message_diff_text}"
-
-    #             message_edit_diff = await bot.edit_message_text(
-    #                 chat_id=chat_id,
-    #                 message_id=message_diff.message_id,
-    #                 text=message_new
-    #             )
-    #     except NameError:
-    #         message_diff = await bot.send_message(
-    #             chat_id,
-    #             text=f"#РАСХОД\n{message_diff_text}"
-    #         )
-
-    # # Закуп
-    # if cell["operation"] == "ЗАКУП":
-    #     print("Закуп")
-
-    #     message_rebuy_text = f"-{cell['rub_table_sum']}\n+{cell['table_sum']} {cell['currency']}\nКурс {cell['rate']}"
-
-    #     try:
-    #         message_rebuy
-    #         try:
-    #             message_edit_rebuy
-    #             message_new = f"{message_edit_rebuy.text},\n\n{message_rebuy_text}"
-
-    #             message_edit_rebuy = await bot.edit_message_text(
-    #                 chat_id=chat_id,
-    #                 message_id=message_rebuy.message_id,
-    #                 text=message_new
-    #             )
-    #         except NameError:
-    #             message_new = f"{message_rebuy.text},\n\n{message_rebuy_text}"
-
-    #             message_edit_rebuy = await bot.edit_message_text(
-    #                 chat_id=chat_id,
-    #                 message_id=message_rebuy.message_id,
-    #                 text=message_new
-    #             )
-    #     except NameError:
-    #         message_rebuy = await bot.send_message(
-    #             chat_id,
-    #             text=f"#ЗАКУП\n{message_rebuy_text}"
-    #         )
-
-
 async def send_message(chat_id: int = CHAT_ID):
     print("start")
     print(chat_id)
@@ -389,35 +261,53 @@ async def send_message(chat_id: int = CHAT_ID):
                 new_cell=new_cell
             )
 
-            await write_message(cell)
+            await write_message(cell, new_cell)
 
         if aoutcome == "Del prev":
             # Удалить из таблицы
-            await delete_meassages(
-                message_buy_id=MESSAGE_BUY.message_id,
-                message_diff_id=MESSAGE_DIFF.message_id,
-                message_rebuy_id=MESSAGE_REBUY.message_id,
-                message_sell_id=MESSAGE_SELL.message_id,
-                chat_id=chat_id
+
+            list_of_messages = (
+                MESSAGE_BUY, MESSAGE_DIFF,
+                MESSAGE_REBUY, MESSAGE_SELL
             )
+
+            for message_type in list_of_messages:
+
+                if message_type is not None:
+
+                    message_id = message_type.message_id
+
+                    await delete_meassage(
+                        chat_id=CHAT_ID,
+                        message_id=message_id
+                    )
+            await set_messages_to_none()
 
         if aoutcome == "Del prev, write new":
             # удалить из таблицы, поменять статус и вывести сообщения в очереди
 
-            await delete_meassages(
-                message_buy_id=MESSAGE_BUY.message_id,
-                message_diff_id=MESSAGE_DIFF.message_id,
-                message_rebuy_id=MESSAGE_REBUY.message_id,
-                message_sell_id=MESSAGE_SELL.message_id,
-                chat_id=chat_id
+            list_of_messages = (
+                MESSAGE_BUY, MESSAGE_DIFF,
+                MESSAGE_REBUY, MESSAGE_SELL
             )
+
+            for message_type in list_of_messages:
+
+                if message_type is not None:
+
+                    message_id = message_type.message_id
+
+                    await delete_meassage(
+                        chat_id=CHAT_ID,
+                        message_id=message_id
+                    )
+            await set_messages_to_none()
             aoutcome = "Write new"
-            continue
+
         if aoutcome == "Next round":
             # Таблица не поменялась, ждем и начинаем новый цикл
 
             await asyncio.sleep(10)
-            continue
 
 
 async def main():
