@@ -49,6 +49,12 @@ async def set_messages_to_none():
     MESSAGE_EDIT_REBUY = None
     COUNT_SELL = 0
 
+async def comment_exist(new_cell):
+    try:
+        comment = new_cell[8]
+    except err:
+        comment = ""
+    return comment
 
 async def delete_meassage(
     message_id,
@@ -98,6 +104,7 @@ async def write_message(cell: dict, new_cell):
     global MESSAGE_EDIT_REBUY
 
     pprint(cell)
+    pprint(new_cell)
 
     if CURRENT_OPERATOR is None:
 
@@ -177,7 +184,9 @@ async def write_message(cell: dict, new_cell):
     if cell["operation"] == "РАСХОД":
         print("расход")
 
-        message_diff_text = f"-{cell['rub_table_sum']} {0}"
+        comment = await comment_exist(new_cell)
+
+        message_diff_text = f"-{cell['rub_table_sum']} {comment}"
 
         if MESSAGE_EDIT_DIFF is not None:
             message_new = (
