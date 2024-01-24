@@ -38,15 +38,25 @@ async def test_sort_by_x(value_list, res, expectation):
     "latest_list, current_list, res, expactation",
     [
         (
-            [1, 2, 3], [4, 5, 6], {"status": "equal"}, does_not_raise()
+            [1, 2, 3], [4, 5, 6],
+            {"status": "equal"},
+            does_not_raise()
         ), (
-            [1, 2], [1, 2, 3], {"status": "current_is_bigger"}, does_not_raise()
+            [1, 2], [1, 2, 3],
+            {"status": "current_is_bigger"},
+            does_not_raise()
         ), (
-            [1, 2, 3], [1, 2], {"status": "latest_is_bigger"}, does_not_raise()
+            [1, 2, 3], [1, 2],
+            {"status": "latest_is_bigger"},
+            does_not_raise()
         ), (
-            [], [], {"status": "equal"}, does_not_raise()
+            [], [],
+            {"status": "equal"},
+            does_not_raise()
         ), (
-            None, [], {"status": "equal"}, pytest.raises(TypeError)
+            None, [],
+            {"status": "equal"},
+            pytest.raises(TypeError)
         )
     ]
 )

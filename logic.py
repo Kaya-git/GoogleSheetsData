@@ -4,7 +4,6 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from pprint import pprint
 from order_queue import order_queue
 import functools
 from configuration import config
@@ -194,7 +193,6 @@ async def get_sheets_status(sheet):
     if COUNTER == 0:
         COUNTER += 1
 
-    print(await order_queue.size())
     if await order_queue.size() == 0:
         result = (
             sheet.values().get(
@@ -205,8 +203,6 @@ async def get_sheets_status(sheet):
         global current_values
         global latest_values
         latest_values = await sort_by_x(result.get("values", []))
-
-        pprint(latest_values)
 
         outcome = await compare_lists(
             latest_list=latest_values,
